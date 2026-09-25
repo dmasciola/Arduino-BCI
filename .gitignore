@@ -1,0 +1,49 @@
+# =========================
+# Operating System Artifacts
+# =========================
+# Windows
+Thumbs.db
+desktop.ini
+# Ubuntu/Linux
+*~
+.directory
+.Trash-*
+
+# =========================
+# VS Code
+# =========================
+.vscode/
+.history/
+
+# =========================
+# LaTeX (Report Folder)
+# =========================
+# Ignore LaTeX compilation junk, KEEP the final .pdf and .tex
+*.aux
+*.bbl
+*.blg
+*.brf
+*.fls
+*.fdb_latexmk
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.bcf
+*.run.xml
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.env
+
+# =========================
+# MATLAB
+# =========================
+*.asv
+*.m~
+matlab_crash_dump.*

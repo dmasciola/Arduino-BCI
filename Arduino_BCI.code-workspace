@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "arduino_bci_firmware",
+			"path": "arduino_bci_firmware"
+		}
+	],
+	"settings": {}
+}
