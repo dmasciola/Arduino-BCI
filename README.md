@@ -24,26 +24,41 @@ To account for physiological variance between different users, the BCI does not 
 *   **3-Sigma Confidence Interval:** The transition threshold is calculated as the `mean + 3*standard_deviation` of the user's resting Alpha power. This strict >99% confidence interval ensures the hardware is only triggered by genuine Alpha spindles, heavily suppressing false positives from eye blinks or muscle tension.
 
 ## Offline Validation
-Extensive offline analysis validates the real-time pipeline. Using continuous spectrogram generation (accessible in the `examples/` directory via Jupyter Notebooks), the dynamic calibration successfully generalized across multiple test subjects, consistently achieving a Signal-to-Noise Ratio (SNR) of 4.00 and adapting seamlessly to users with differing baseline Alpha amplitudes.
+Extensive offline analysis validates the real-time pipeline. Using continuous spectrogram generation (accessible in the `MATLAB/` directory via the `Analysis.m` script), the dynamic calibration successfully generalized across multiple test subjects, consistently achieving a linear Signal-to-Noise Ratio (SNR) exceeding 3.15 and adapting seamlessly to users with differing baseline Alpha amplitudes.
 
 ## Installation & Usage
 
+
 **1. Clone the repository and install dependencies:**
 ```bash
-git clone [https://github.com/DavideMasciola/Arduino-BCI.git](https://github.com/DavideMasciola/Arduino-BCI.git)
+git clone https://github.com/dmasciola/Arduino-BCI.git
 cd Arduino-BCI
-pip install -r requirements.txt
 ```
 
-**2. Hardware Setup:**
-
-* Connect the Olimex shield and ensure electrodes are properly placed (e.g. Oz for Alpha detection).
-* Connect the Arduino via USB and verify the serial port assignment in `data_analysis.py` (default: `/dev/ttyACM0`).
-
-**3. Run the BCI:**
+**2. Create a virtual environment and install dependencies**
+*On Ubuntu/macOS:*
 
 ```bash
-python data_analysis.py
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r python/requirements.txt
+```
+
+*On Windows:*
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r python/requirements.txt
+```
+
+**3. Hardware Setup:**
+* Connect the Olimex shield and ensure electrodes are properly placed (e.g. Oz for Alpha detection).
+* Connect the Arduino via USB and verify the serial port assignment in `python/data_analysis.py` (default: `/dev/ttyACM0`).
+
+**4. Run the BCI:**
+```bash
+python python/data_analysis.py
 ```
 *Follow the terminal prompts to complete the 10-second calibration phase before the PyQtGraph GUI initializes.*
 
