@@ -21,7 +21,7 @@ The software backend relies on continuous windowed analysis to extract Alpha pow
 ## Dynamic Calibration & Statistical Thresholding
 To account for physiological variance between different users, the BCI does not rely on a static, hardcoded amplitude threshold. Instead, it features an automated initialization phase:
 *   **Baseline Establishment:** The system records a 5-second "Eyes Opened" baseline and a 5-second "Eyes Closed" activation state.
-*   **3-Sigma Confidence Interval:** The transition threshold is calculated as the `mean + 3*standard_deviation` of the user's resting Alpha power. This strict >99% confidence interval ensures the hardware is only triggered by genuine Alpha spindles, heavily suppressing false positives from eye blinks or muscle tension.
+*   **3-Sigma Confidence Interval:** The transition threshold is calculated as the `mean + 3*standard_deviation` of the user's resting Alpha power. This strict statistical threshold ensures the hardware is only triggered by genuine Alpha spindles, heavily suppressing false positives from eye blinks or muscle tension.
 
 ## Offline Validation
 Extensive offline analysis validates the real-time pipeline. Using continuous spectrogram generation (accessible in the `MATLAB/` directory via the `Analysis.m` script), the dynamic calibration successfully generalized across multiple test subjects, consistently achieving a linear Signal-to-Noise Ratio (SNR) exceeding 3.15 and adapting seamlessly to users with differing baseline Alpha amplitudes.
