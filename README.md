@@ -26,7 +26,7 @@ To account for physiological variance between different users, the BCI does not 
 *   **Hybrid Median-MAD Thresholding:** The final transition threshold ($T$) is determined by a linear combination of a geometric mean ($T_2$) and a 3-Sigma confidence interval ($T_1$)[cite: 6]. The weight ($\alpha$) is derived from the Median Absolute Deviation (MAD) of the user's active state, bounded by empirical constants ($C_L = 0.1$, $C_H = 0.4$):
 $$T_1 = m_{\text{active}} + 3\cdot s_{\text{active}}$$
 $$T_2 = \sqrt{M_{\text{active}}\cdot M_{\text{rest}}}$$
-$$C = \frac{\operatorname{median}(\vert{}PSD_{\text{active}}-M_{\text{active}}\vert{})}{M_{\text{active}}}$$
+$$C = \frac{\text{median}(\vert{}PSD_{\text{active}}-M_{\text{active}}\vert{})}{M_{\text{active}}}$$
 $$\alpha=\frac{C-C_L}{C_H-C_L}$$
 $$T = \alpha T_1+(1-\alpha)T_2$$
 *   **Rolling Baseline:** The system continuously tracks the last 15 valid samples of high PSD and low PSD to evaluate the threshold dynamically from scratch, adapting to physiological habituation over time.
