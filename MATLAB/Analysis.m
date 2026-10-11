@@ -2,16 +2,18 @@ fs = 250;
 window = fs;
 noverlap = fs/2;
 nfft = 250;
+
+Data = eeg_value*(5/1024);
 [s, f, t, p] = spectrogram(Data, window, noverlap, nfft, fs);
 
 alpha_mask = (f >= 8 & f <= 12);
 alpha_power_over_time = mean(p(alpha_mask, :), 1);
 
-closed_starts = Events(1:2:end);
-closed_ends   = Events(2:2:end); 
+closed_starts = start_s;
+closed_ends   = end_s;
 
-opened_starts = [0, reshape(closed_ends, 1, [])];   % Appending the final time of the recording
-opened_ends   = [reshape(closed_starts, 1, []), t(end)];    % Appending the initial timo of the recording
+opened_starts = [0, reshape(end_s, 1, [])];   % Appending the final time of the recording
+opened_ends   = [reshape(start_s, 1, []), t(end)];    % Appending the initial time of the recording
 
 % Minimum length for safe iteration when comparing closed/opened events
 len_min = min([size(closed_starts,2) size(closed_ends,2) size(opened_starts,2) size(opened_ends,2)]);
@@ -33,20 +35,30 @@ for i = 1:length(opened_starts)
 end
 
 % Calculate the global means
-P_signal = mean(closed_power_vals);
-P_noise  = mean(opened_power_vals);
+P_signal = mean(closed_power_vals(closed_power_vals<20));
+P_noise  = mean(opened_power_vals(opened_power_vals<20));
 
 % Signal-to-Noise Ratio
 SNR_linear = P_signal / P_noise;
 SNR_dB = 10 * log10(SNR_linear);
 
+% Latency
+
+for i=1:1:length(start_s)
+    idx = find(timestamp_s>start_s(i),1);
+    latency_active(i) = timestamp_s(idx) - start_s(i);
+end
+activation_latency = median(latency_active);
+
+
 %% --- Results ---
 fprintf('\n--- SNR Analysis ---\n');
-fprintf('Mean Alpha Power (Eyes Closed - Signal): %.4f\n', P_signal);
-fprintf('Mean Alpha Power (Eyes Opened - Noise):  %.4f\n', P_noise);
+
+fprintf('Mean Alpha Power (Eyes Closed - Signal): %.4fe-6\n', P_signal*1e6);
+fprintf('Mean Alpha Power (Eyes Opened - Noise):  %.4fe-6\n', P_noise*1e6);
 fprintf('SNR (Linear): %.2f\n', SNR_linear);
 fprintf('SNR (dB):     %.2f dB\n', SNR_dB);
-
+fprintf('Median activation latency = %.4f s\n', activation_latency);
 %% --- Plotting ---
 
 figure;
@@ -90,7 +102,11 @@ for i = 1:len_plot
     end
 end
 
+servo_active = timestamp_s(1:2:end);
+servo_inactive = timestamp_s(2:2:end);
+xline(servo_active, "r", ':');
+xline(servo_inactive, "b", ':');
 xlabel('Time (seconds)');
 ylabel('Alpha Power Spectral Density');
-legend('show', 'Location', 'northeast');
+%legend('show', 'Location', 'northeast');
 hold off;

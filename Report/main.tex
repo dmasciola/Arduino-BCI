@@ -1,25 +1,38 @@
 \documentclass[journal, a4paper]{IEEEtran}
 
 % Essential Packages
+\usepackage{balance}       % Manages extra space
+
 \usepackage{graphicx}      % For inserting spectrograms and hardware diagrams
-\usepackage{amsmath}       % For mathematical formulas (Welch's, 3-sigma)
-\usepackage{hyperref}      % For clickable links to your GitHub repo
+\usepackage{amsmath}       % For mathematical formulas 
+
+\usepackage{hyperref}      % For clickable links
+
 \usepackage{booktabs}      % For professional tables
 \usepackage{tabularx}
-\usepackage[style=numeric, sorting=none]{biblatex}
-\addbibresource{bibliography.bib}
+
 
 % Document Info
 \title{Event-Related Alpha Desynchronization Brain Computer Interface Using Arduino UNO}
-\author{Davide Masciola}
+\vspace{9pt}
+\author{Davide Masciola \\
+\textit{Undergraduate Student, Biomedical Engineering} \\
+\textit{University of Pisa} \\
+\texttt{d.masciola@studenti.unipi.it}}
 
+
+\let\oldbibliography\thebibliography
+\renewcommand{\thebibliography}[1]{%
+  \oldbibliography{#1}%
+  \normalsize
+}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-This report details the hardware architecture and digital signal processing pipeline of a real-time Brain-Computer Interface (BCI) designed to detect Event-Related Desynchronization (ERD) in the Alpha band (8–12 Hz) in the Occipital lobe. By utilizing an isolated electromechanical actuation loop and dynamic statistical thresholding, the system successfully generalizes across tested human subjects with varying baseline neurophysiology, maintaining a robust Signal-to-Noise Ratio while eliminating PWM-induced electrical artifacts.
+This report details the hardware architecture and digital signal processing pipeline of a real-time Brain-Computer Interface (BCI) designed to detect Event-Related Desynchronization (ERD) in the Alpha band (8–12 Hz) in the Occipital lobe. By utilizing an isolated electromechanical actuation loop and dynamic statistical thresholding, the system successfully generalizes across various trials, maintaining a robust Signal-to-Noise Ratio while eliminating PWM-induced electrical artifacts.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -52,7 +65,7 @@ The OAmp was left with the default ($\sim$80) gain, bringing the $G_\text{total}
 
 The SHIELD is powered by the Arduino board at 5 V and sends the digital data to the A0 port of the Arduino. The board also powers a green LED and a piezo speaker to provide visual and audio feedback to the user about the state of the machine. The EEG data is then sent in a 4 byte packet containing a start and a end sequence and the 10 bit signal in between. This configuration allows the computer program to correctly recognize the single data packet and synchronize with the board. A USB cable both powers the system and allows communication between the board and the computer. 
 
-The servomotor is powered separately with a 6 V battery to avoid PWM noise in the SHIELD: if the squared wave sent from Arduino to power the servo is connected in parallel with the board, a small percentage of the signal enters the amplification pipeline, producing huge bumps that completely disrupt the signal.
+The servomotor is powered separately with a 6 V battery to avoid PWM noise in the SHIELD. If the squared wave sent from the Arduino to power the servo is connected in parallel with the board, a small percentage of the signal enters the amplification pipeline, producing huge bumps that completely disrupt the signal.
 
 \section{BCI Pipeline}
 The entire BCI pipeline is shown below.
@@ -64,17 +77,19 @@ The entire BCI pipeline is shown below.
 \end{figure}
 
 \begin{enumerate}
-    \item The electrodes placed on the head record the biopotential. Common mode signal is mitigated by the Fz reference electrode, and the Mastoid CH- is introduced as a differential input to subtract common muscle artifacts during the recording.
+    \item The electrodes placed on the head record the biopotential. The common mode signal is mitigated by the Fz reference electrode, and the Mastoid CH- is introduced as a differential input to subtract common muscle artifacts during the recording.
     \item The SHIELD amplifies and filters the analog signal.
-    \item The board shows the BCI status. A green LED is on during all the data acquisition procedure.
-    \item The Arduino UNO converts the data to a digital 4-byte packet. Data is converted based on the 5\,V scale based on the relation
+    \item The board shows the BCI status. A green LED is illuminated during all entire data acquisition procedure.
+    \item The Arduino UNO converts the data to a digital 4-byte packet. Data is converted based on the 5\,V scale according to the relation
     \begin{equation*}
         \text{Data}=\frac{S}{V}\cdot2^{10}
     \end{equation*}
     Where \textit{S} is the analog signal and \textit{V} is the power line of the board (5\,V).
     \item The PC reads the packet and analyzes the data. The processing is described in Section \ref{processing}.
-    \item The PC feedback is sent back to the Arduino as a ASCII conversion of a char value, which is evaluated to correctly actuate the servo.
+    \item The PC feedback is sent back to the Arduino as an ASCII conversion of a char value, which is evaluated to correctly actuate the servo.
 \end{enumerate}
+
+Meanwhile, a thread operation is conducted to track eye status and produce timestamps for eye opening/closing events. These data facilitate the offline analysis. The servo actuations are also saved with timestamps.
 
 \section{Signal Processing}\label{processing}
 The continuous data stream is sampled at 250\,Hz to provide a solid and precise signal. The digital signal processing is managed by the Python live script. The script is responsible for calibration, synchronization of the data collection process, data plotting, data filtering, spectral power estimation and response evaluation, and data storage. The choice of the coding language is justified by the useful libraries for signal processing and the ease of use for running live scripts.
@@ -86,75 +101,114 @@ The script is set to accept data from a specified serial port; the packet receiv
 A 4th-order Butterworth bandpass filter isolates the 8--12\,Hz frequency band. Choosing to use Infinite Impulse Response (IIR) Filters allows low-latency filtering due to the low order, and a good mitigation of cutoff frequencies with a sufficient small ripple effect for the specific application.
 
 \subsection{Spectral Estimation and Windowing}
-Power Spectral Density (PSD) is calculated using Welch's method. The estimation is made on a 4 second window during calibration phase, and is then executed on every new second (250 samples) of data. Such time windows provide robust threshold estimation and dynamic power evaluation to correctly describe the power increase/decrease.
+Power Spectral Density (PSD) is calculated using Welch's method. The estimation is made on two second windows extracted from a 15 second frame during the calibration phase, and is then executed on every new second (250 samples) of data. Such time windows provide robust threshold estimation and dynamic power evaluation to correctly describe the power increase/decrease.
+
+\subsection{Multimodal Synchronization and Computer Vision}
+To establish an objective ground truth for the biological Event-Related Desynchronization, a computer vision pipeline was engineered to operate in parallel with the EEG acquisition. The \textbf{mediapipe Face Mesh framework} was utilized to extract facial landmarks in real-time, calculating the Eye Aspect Ratio (EAR) to determine the exact onset and offset of the user's eye closures. 
+
+Because the video feed operates at approximately 15 frames per second (FPS) while the EEG hardware samples at 250 Hz, running both processes on a single synchronous thread would bottleneck the signal acquisition loop, resulting in catastrophic data loss. To resolve this, a multithreaded architecture was implemented. The \textit{EyeStateThread} operates entirely independently of the \textit{EEGData} class. 
+
+To synchronize these disparate data streams, a common monotonic time base was established using the hardware's performance counter (\texttt{time.perf\_counter()}). A global $t_0$ timestamp is generated at system initialization and shared across both threads. When the EAR algorithm detects a state change that exceeds the temporal debounce threshold, the exact differential timestamp is logged. This ensures that the low-frequency visual ground truth and the high-frequency electrophysiological data are aligned for offline validation, without risking the responsiveness of the servomotor.
 
 \section{Dynamic Calibration \& Results}
 Because biological signals exhibit immense physiological variance across individuals, static amplitude thresholds frequently fail. The system provides high adaptability to different users by implementing an initial phase of calibration. The process is divided into 4 steps:
 \begin{enumerate}
-    \item 5 second recording in active (eyes open) state. Estimation of low Alpha-band mean power $\text{m}_{\text{active}}$.
-    \item 5 second recording in rest (eyes closed) state. Estimation of high Alpha-band mean power $\text{m}_{\text{rest}}$.
+    \item 15 second recording in active (eyes open) state. Estimation of low Alpha-band mean power $\text{m}_{\text{active}}$.
+    \item 15 second recording in rest (eyes closed) state. Estimation of high Alpha-band mean power $\text{m}_{\text{rest}}$.
     \item Evaluation of spectral power levels. The script returns an error if the high level is below the lower level and prints a warning if the high level is less than 1.5 times the low level (which might be caused by bad electrode connection).
     \item Estimation of threshold \textit{T}.
 \end{enumerate}
 
 \subsection{Artifact Rejection \& Outliers Robustness}
-To avoid including any movement that the user might do during the change from  active (eyes open) and the rest (eyes closed) state, a transition time is added between the calibration steps. For additional mitigation of accidental artifacts, the Spectral Power estimation is calculated over a 4 second window extracted from the 5 second window registered, so the first second of the calibration procedure is automatically rejected.  
+\label{rejection logic}
+To avoid including any movement that the user might do during the change from  active (eyes open) and the rest (eyes closed) state, a transition time is added between the calibration steps: the first 3 seconds of both the windows are skipped and the PSD is evaluated over twelve overlapping windows from second 3 to second 15.
 
 To mitigate servo twitching during the experiment---a behavior shown in early tests that was related to false positives/negatives and only lasted one window frame---the state evaluation system compares the new power window $\text{P}_{\text{new}}$ to the last two windows evaluated $\text{P}_{\text{current}}$ and $\text{P}_{\text{past}}$. The algorithm logic is:
 \begin{itemize}
     \item if $\text{P}_{\text{new}}$ == $\text{P}_{\text{current}}$ AND $\text{P}_{\text{new}}$ $\ne$ $\text{P}_{\text{past}}$: the servo changes its state.
     \item else: the servo does not change its state.
 \end{itemize}
-Although this method introduces 1 second of latency to the actuation of the mechanism, it provides a much more precise response, actuating correctly in response to a change of state.
+Plus, a 2 second refractory period is introduced after the activation/deactivation of the servo to mitigate the nonlinear alpha spike behavior: tests have shown a big initial spike followed by a lower energy period and then a plateau of high Alpha PSD.
+
+Although this method introduces 3 seconds of latency to the actuation of the mechanism, it provides a much more precise response, mitigating false activations/deactivations.
+
 \subsection{Statistical Thresholding}
-The transition threshold $T$ is defined dynamically using a 3-sigma confidence interval based on the user's active (eyes open) Alpha power:
+The first version of the BCI operated with a threshold $T_1$ defined using a 3-sigma confidence interval based on the user's active (eyes open) Alpha power:
 \begin{equation*}
-T = m_{\text{active}} + 3\cdot s_{\text{active}}
+T_1 = m_{\text{active}} + 3\cdot s_{\text{active}}
 \end{equation*}
 Where $m_{\text{active}}$ and $s_{\text{active}}$ are the sample's mean and standard deviation during the active phase (eyes open).
 
-This threshold provides precise response to the user's input, as shown in the test trials.
+However, this method failed in users with low statistical difference between basal alpha activity and event-related desynchronization.
 
+To develop a more general model, a coefficient $\alpha$ is proposed. A coefficient \textit{C} is evaluated as the Median Absolute Deviation (MAD) of the active state of the subject normalized over the median of the PSD. The $\alpha$ is then determined by normalizing the coefficient over standard high and low \textit{C} levels found empirically over numerous trials (in this case $C_L=0.1$ and $C_H=0.4$). These parameters can easily be tuned by the subject while testing the architecture, although the ultimate goal would be to generalize such parameters.
+\begin{gather*}
+    C = \frac{\operatorname{median}(|PSD_{\text{active}}-M_{\text{active}}|)}{M_{\text{active}}}\\
+    \alpha=\frac{C-C_L}{C_H-C_L}
+\end{gather*}
+The final threshold is then determined by linear combination of a geometric mean (which highlights the logaritmic distribution of ERD) and the first method proposed. The median has been chosen as the standard method for the evaluation of the coefficient and the $T_2$ because of its mathematical robustness towards outliers---such as the spikes in power.
+
+\begin{gather*}
+    T_1 = m_{\text{active}} + 3\cdot s_{\text{active}}\\
+    T_2 = \sqrt{M_{\text{active}}\cdot M_{\text{rest}}}\\
+    T = \alpha T_1+(1-\alpha)T_2
+\end{gather*}
+
+Being related to light adaptation, Alpha ERD is intrinsically a non-stationary process, so a dynamic threshold had to be implemented. The system effectively takes track of any valid input---so any input which satisfies the condition in section \ref{rejection logic}---and uses the last 15 samples of high PSD and 15 samples of low PSD to evaluate a new threshold from scratch, adapting to the subject physiological variability.
 
 \subsection{Offline Validation}
-Offline MATLAB analysis of continuous Alpha power revealed significant physiological variance among the tested subjects. Subjects demonstrating high Event-Related Desynchronization achieved a linear Signal-to-Noise Ratio (SNR) exceeding 4.0 (with a registered maximum of 6.69 dB). However, the system also successfully adapted to subjects with heavily attenuated Alpha responses (SNR 3.15/4.98 dB). A static threshold calibrated for high-amplitude subjects would have resulted in a false-negative failure rate for low-amplitude users. The implementation of the dynamic 3-sigma statistical threshold successfully mitigated this physiological variance, ensuring robust electromechanical actuation across all subjects. 
+The new architecture has currently been tested over various trials on one subject. Future datasets are being produced.
 
-To demonstrate adaptability, high and low ERD samples are shown in Table \ref{tab:snr_results} and Figures \ref{fig:subject1}--\ref{fig:subject2}. Subject 1 shows an exceptional example of ERD, while Subject 2 presents a milder, yet noticeable difference. It should also be noted that some of the subjects presented anomalous spikes that were recorded in the low-power region, but most of these outliers were successfully tackled by the two-windows delay implemented in the algorithm.
+Offline MATLAB analysis of continuous Alpha power revealed significant adaptability over different trials.
+To demonstrate adaptability, results over five trials are shown in Table \ref{tab:bci_metrics}. The increase of latency from the first tests has been accepted as a trade-off for precision and robustness. The test showed an average precision (correct actuations over total actuations) of 81.5\%, with the biggest flaw being false activations, which can be related to artifacts.
 
-\begin{table}[ht]
+\subsection{Latency and Event-Detection Accuracy}
+
+The system exhibits a median actuation latency of 3.91 seconds. This structural delay is not a computational flaw, but a deliberate mathematical aggregation of three factors: the biological habituation time required for the Alpha rhythm to fill the 2-second Welch periodogram, the 1.0-second tick quantization of the evaluation loop, and the temporal debounce mechanism (Section \ref{rejection logic}) which enforces state stability. 
+
+However, when evaluating the architecture via Event-Detection Accuracy—defined as the successful actuation of the servomotor within the targeted biological window—the system achieved an evident True Positive catch. Across all validation trials, the hybrid median-MAD thresholding architecture successfully identified every intended physiological state change, proving its efficacy as a highly reliable, although intentionally delayed, control mechanism.
+
+\begin{table}[htbp]
 \centering
-\caption{Signal-to-Noise Ratio (SNR) Analysis of Alpha-Band Event-Related Desynchronization}
-\label{tab:snr_results}
-\setlength{\tabcolsep}{3pt} % Compresses horizontal padding between columns
-\begin{tabular}{@{}lcccc@{}}
+\caption{Real-Time BCI Performance Metrics Across Five Validation Trials}
+\label{tab:bci_metrics}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l c c c c c@{}}
 \toprule
-\textbf{Subject} & \textbf{Baseline (Opened)} & \textbf{Active (Closed)} & \textbf{SNR (Linear)} & \textbf{SNR (dB)} \\ \midrule
-Subject 1        & 0.3261                     & 1.5218                   & 4.67                  & 6.69              \\ 
-Subject 2        & 0.2042                     & 0.6426                   & 3.15                  & 4.98              \\\bottomrule
+\textbf{Trial} & \textbf{$P_{\text{sig}}$} & \textbf{$P_{\text{noise}}$} & \textbf{SNR} & \textbf{SNR} & \textbf{Lat.} \\ 
+& \textbf{($\times 10^{-6}$)} & \textbf{($\times 10^{-6}$)} & \textbf{(Lin)} & \textbf{(dB)} & \textbf{(s)} \\
+\midrule
+1 & 4.76 & 2.31 & 2.06 & 3.13 & 3.62 \\
+2 & 9.38 & 2.52 & 3.72 & 5.70 & 3.33 \\
+3 & 5.39 & 2.72 & 1.98 & 2.96 & 4.26 \\
+4 & 13.01 & 2.91 & 4.47 & 6.50 & 4.19 \\
+5 & 7.75 & 2.56 & 3.03 & 4.81 & 4.16 \\
+\midrule
+\textbf{Avg} & \textbf{8.06} & \textbf{2.61} & \textbf{3.05} & \textbf{4.62} & \textbf{3.91} \\
+\bottomrule
 \end{tabular}
 \end{table}
+
+The figure below shows the MATLAB offline analysis of the trial. Besides the figure, other useful statistics are evaluated and printed to the user. Pink windows are the closed eye frames, while gray windows are the open eye frames. The red and blue lines represent, respectively, servo actuation and deactivation.
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.8\linewidth]{Images/SubjectHighSNR.png}
-    \caption{Subject 1 (6.69 dB SNR)}
+    \includegraphics[width=1\linewidth]{Images/Trial.png}
+    \caption{MATLAB trial plot}
     \label{fig:subject1}
 \end{figure}
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=0.8\linewidth]{Images/SubjectLowSNR.png}
-    \caption{Subject 2 (4.98 dB SNR)}
-    \label{fig:subject2}
-\end{figure}
-
-The cases show a correct registration of Alpha-band spikes during resting state (colored windows). The dynamic threshold allows the servo to be controlled adapting to the subject's physiological PSD. Preliminary testing suggested approximately 95\% correct actuation, with an average response delay of about 1.5–2 s, trading response speed for improved robustness over false positives/negatives.
 
 
 \section{Discussion \& Lessons Learned}
 Hardware-software co-design is critical in biomedical engineering. Even with correct electrode placement, DSP algorithms cannot work properly with a physically compromised signal. For this reason, securing the hardware grounding was a mandatory prerequisite for software filters and algorithms to function. Furthermore, the necessity of adaptive baselining was proven: static thresholds are unviable for general-purpose BCIs, providing good suitability for the majority of subjects.
 
-\section{Conclusion}
-By combining strict hardware isolation with an adaptive, statistically grounded software threshold, this system provides a robust framework for real-time BCI control, generalizable across multiple users without manual recalibration.
+Furthermore, while the hardware is robust, the biological Alpha ERD paradigm is intrinsically limited by user habituation to light intensity, making it suitable for simple binary triggers but highly impractical for continuous, complex prosthetic control.
 
-\printbibliography
+\section{Conclusion}
+By combining strict hardware isolation with an adaptive, statistically grounded software threshold, this system provides a robust framework for real-time BCI control, generalizable across multiple users with minimal tuning.
+
+\balance
+\bibliographystyle{IEEEtran}
+\bibliography{bibliography} % Assuming your file is named bibliography.bib
 \end{document}

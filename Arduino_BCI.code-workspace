@@ -4,8 +4,8 @@
 			"path": "."
 		},
 		{
-			"name": "arduino_bci_firmware",
-			"path": "arduino_bci_firmware"
+			"name": "Arduino-BCI_firmware",
+			"path": "Arduino-BCI_firmware"
 		}
 	],
 	"settings": {}
